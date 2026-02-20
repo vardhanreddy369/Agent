@@ -23,13 +23,17 @@ jobs:
         $env:PLAYWRIGHT_BROWSERS_PATH="pw-browsers"
         python -m playwright install chromium
       shell: powershell
+    - name: Zip Browsers
+      # Zip the browsers folder to pw-browsers.zip
+      run: Compress-Archive -Path pw-browsers -DestinationPath pw-browsers.zip
+      shell: powershell
     - name: Create Credentials
       run: echo '${{ secrets.GCP_JSON }}' > credentials.json
       shell: bash
     - name: Build Windows Exe
-      # Bundle the pw-browsers folder!
+      # Bundle the ZIP file instead of the folder!
       run: |
-        pyinstaller --noconfirm --onefile --windowed --add-data "credentials.json;." --add-data "form.html;." --add-data "pw-browsers;pw-browsers" --name Agent main.py
+        pyinstaller --noconfirm --onefile --windowed --add-data "credentials.json;." --add-data "form.html;." --add-data "pw-browsers.zip;." --name Agent main.py
     - uses: actions/upload-artifact@v4
       with:
         name: Agent-Windows
@@ -51,12 +55,15 @@ jobs:
       run: |
         export PLAYWRIGHT_BROWSERS_PATH=$PWD/pw-browsers
         python -m playwright install chromium
+    - name: Zip Browsers
+      # Use system zip command
+      run: zip -r pw-browsers.zip pw-browsers
     - name: Create Credentials
       run: echo '${{ secrets.GCP_JSON }}' > credentials.json
     - name: Build Mac App
-      # Bundle pw-browsers folder. Note mac separator :
+      # Bundle the ZIP file! Note separator : for mac
       run: |
-        pyinstaller --noconfirm --onefile --windowed --add-data "credentials.json:." --add-data "form.html:." --add-data "pw-browsers:pw-browsers" --name Agent main.py
+        pyinstaller --noconfirm --onefile --windowed --add-data "credentials.json:." --add-data "form.html:." --add-data "pw-browsers.zip:." --name Agent main.py
     - uses: actions/upload-artifact@v4
       with:
         name: Agent-Mac

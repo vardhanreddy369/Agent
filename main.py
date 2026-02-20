@@ -4,18 +4,34 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import os
 import sys
+import shutil
+import zipfile
 
 # Configure Browser Path BEFORE importing Playwright
-# If running as .exe (frozen), browsers are bundled in 'pw-browsers'
 try:
     if getattr(sys, 'frozen', False):
-        # We are running in a PyInstaller bundle
+        # Running in PyInstaller bundle
         bundle_dir = sys._MEIPASS
-        # Set path to the bundled 'pw-browsers' folder
-        os.environ["PLAYWRIGHT_BROWSERS_PATH"] = os.path.join(bundle_dir, "pw-browsers")
+        
+        # Define where we want the browsers to live (e.g., in a temp folder)
+        # We reuse the _MEIPASS folder which is cleaned up on exit
+        target_browser_dir = os.path.join(bundle_dir, "pw-browsers")
+        zip_path = os.path.join(bundle_dir, "pw-browsers.zip")
+        
+        # If we bundled a ZIP, extract it
+        if os.path.exists(zip_path) and not os.path.exists(target_browser_dir):
+            print("Extracting bundled browsers... (this may take a moment)")
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(bundle_dir) # Extracts to _MEIPASS/pw-browsers
+        
+        # Now point Playwright to it
+        if os.path.exists(target_browser_dir):
+            os.environ["PLAYWRIGHT_BROWSERS_PATH"] = target_browser_dir
+            print(f"Playwright browsers configured at: {target_browser_dir}")
+        else:
+             print("Warning: bundled browsers not found.")
     else:
         # Running normally (dev mode)
-        # Default behavior (uses ~/.cache/ms-playwright)
         pass
 except Exception as e:
     print(f"Error setting up environment: {e}")
