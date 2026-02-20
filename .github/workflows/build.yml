@@ -18,13 +18,18 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pyinstaller
-    - name: Install Playwright Browsers
-      run: python -m playwright install chromium
+    - name: Install Playwright Browsers Locally
+      run: |
+        $env:PLAYWRIGHT_BROWSERS_PATH="pw-browsers"
+        python -m playwright install chromium
+      shell: powershell
     - name: Create Credentials
       run: echo '${{ secrets.GCP_JSON }}' > credentials.json
       shell: bash
     - name: Build Windows Exe
-      run: pyinstaller --noconfirm --onefile --windowed --add-data "credentials.json;." --add-data "form.html;." --name Agent main.py
+      # Bundle the pw-browsers folder!
+      run: |
+        pyinstaller --noconfirm --onefile --windowed --add-data "credentials.json;." --add-data "form.html;." --add-data "pw-browsers;pw-browsers" --name Agent main.py
     - uses: actions/upload-artifact@v4
       with:
         name: Agent-Windows
@@ -42,13 +47,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pyinstaller
-    - name: Install Playwright Browsers
-      run: python -m playwright install chromium
+    - name: Install Playwright Browsers Locally
+      run: |
+        export PLAYWRIGHT_BROWSERS_PATH=$PWD/pw-browsers
+        python -m playwright install chromium
     - name: Create Credentials
       run: echo '${{ secrets.GCP_JSON }}' > credentials.json
     - name: Build Mac App
-      # Mac uses : for path separator in add-data
-      run: pyinstaller --noconfirm --onefile --windowed --add-data "credentials.json:." --add-data "form.html:." --name Agent main.py
+      # Bundle pw-browsers folder. Note mac separator :
+      run: |
+        pyinstaller --noconfirm --onefile --windowed --add-data "credentials.json:." --add-data "form.html:." --add-data "pw-browsers:pw-browsers" --name Agent main.py
     - uses: actions/upload-artifact@v4
       with:
         name: Agent-Mac
