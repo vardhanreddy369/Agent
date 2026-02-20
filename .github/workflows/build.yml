@@ -27,13 +27,17 @@ jobs:
       run: |
         python -m playwright install chromium
         
-    - name: Build Executable
-      # Note: PyInstaller bundles Python script into .exe
-      # We add credentials.json and form.html (if needed) to the bundle
-      # Ideally, credentials should be passed securely or loaded from outside.
-      # For simplicity, we bundle form.html but expect credentials.json alongside the exe
+    - name: Create Credentials File from Secret
+      # We take the secret JSON content and save it to a file credentials.json
+      # Use Powershell to handle JSON content safely
       run: |
-        pyinstaller --noconfirm --onefile --windowed --add-data "form.html;." --name Agent main.py
+        echo '${{ secrets.GCP_JSON }}' > credentials.json
+      shell: bash
+
+    - name: Build Executable
+      # Bundle credentials.json and form.html INSIDE the exe
+      run: |
+        pyinstaller --noconfirm --onefile --windowed --add-data "credentials.json;." --add-data "form.html;." --name Agent main.py
         
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
