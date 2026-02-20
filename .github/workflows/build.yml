@@ -1,4 +1,4 @@
-name: Build Windows Agent
+name: Build Agent (Windows & Mac)
 
 on:
   push:
@@ -6,41 +6,50 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
-    
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
+    - uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-        
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pyinstaller
-        
     - name: Install Playwright Browsers
-      run: |
-        python -m playwright install chromium
-        
-    - name: Create Credentials File from Secret
-      # We take the secret JSON content and save it to a file credentials.json
-      # Use Powershell to handle JSON content safely
-      run: |
-        echo '${{ secrets.GCP_JSON }}' > credentials.json
+      run: python -m playwright install chromium
+    - name: Create Credentials
+      run: echo '${{ secrets.GCP_JSON }}' > credentials.json
       shell: bash
-
-    - name: Build Executable
-      # Bundle credentials.json and form.html INSIDE the exe
-      run: |
-        pyinstaller --noconfirm --onefile --windowed --add-data "credentials.json;." --add-data "form.html;." --name Agent main.py
-        
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
+    - name: Build Windows Exe
+      run: pyinstaller --noconfirm --onefile --windowed --add-data "credentials.json;." --add-data "form.html;." --name Agent main.py
+    - uses: actions/upload-artifact@v4
       with:
         name: Agent-Windows
         path: dist/Agent.exe
+
+  build-mac:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+    - name: Install Playwright Browsers
+      run: python -m playwright install chromium
+    - name: Create Credentials
+      run: echo '${{ secrets.GCP_JSON }}' > credentials.json
+    - name: Build Mac App
+      # Mac uses : for path separator in add-data
+      run: pyinstaller --noconfirm --onefile --windowed --add-data "credentials.json:." --add-data "form.html:." --name Agent main.py
+    - uses: actions/upload-artifact@v4
+      with:
+        name: Agent-Mac
+        path: dist/Agent
