@@ -55,7 +55,7 @@ SCOPES = [
 ]
 
 SHEET_NAME = "AgentData" 
-TARGET_URL = f"file://{os.path.abspath('form.html')}"
+TARGET_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfY3XmKJvQ4IW3BcSBHC5JWPCz5fl-t6dgfpHj-OkIPr_TmuA/viewform?usp=publish-editor"
 DRIVE_FOLDER_ID = "17gnQ3JcAodRCzzfqzELr2Y0GtMql8J3w" 
 
 def resource_path(relative_path):
@@ -113,13 +113,30 @@ def fill_form(data):
         page = browser.new_page()
         print(f"Navigating to {target_url}...")
         page.goto(target_url)
-        print(f"Typing... {data['name']}")
+        
+        print(f"Typing... {data['name']} and {data['email']}")
         try:
-            page.fill("#name-input", data['name'])
-            page.fill("#email-input", data['email'])
-            page.click("#submit-btn")
-        except:
-            print("Could not find form elements.")
+            # Wait for the text input fields to render from Google's complex JS
+            page.wait_for_selector('input[type="text"]', state="visible", timeout=10000)
+            
+            # Google forms typically use standard input[type="text"] for short answers.
+            # Assuming Name is the first question and Email is the second question
+            inputs = page.locator('input[type="text"]').all()
+            if len(inputs) >= 2:
+                inputs[0].fill(data['name'])
+                time.sleep(1) # Small pause to emulate human typing speed
+                inputs[1].fill(data['email'])
+            
+            # Click the 'Submit' span inside the button
+            # Google forms use a "Submit" element with role="button"
+            page.locator('div[role="button"]:has-text("Submit")').click()
+            
+            # Wait for the "Your response has been recorded." conformation page wrapper
+            page.wait_for_selector('.freebirdFormviewerViewResponseConfirmationMessage, .vHW8K', state="visible", timeout=10000)
+
+        except Exception as e:
+            print(f"Could not find form elements or submit. Error: {e}")
+        
         time.sleep(2)
         page.screenshot(path=screenshot_path)
         print(f"Success! Screenshot saved to {screenshot_path}")
