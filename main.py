@@ -6,32 +6,41 @@ import os
 import sys
 import shutil
 import zipfile
+import stat
 
 # Configure Browser Path BEFORE importing Playwright
 try:
     if getattr(sys, 'frozen', False):
-        # Running in PyInstaller bundle
         bundle_dir = sys._MEIPASS
-        
-        # Define where we want the browsers to live (e.g., in a temp folder)
-        # We reuse the _MEIPASS folder which is cleaned up on exit
         target_browser_dir = os.path.join(bundle_dir, "pw-browsers")
         zip_path = os.path.join(bundle_dir, "pw-browsers.zip")
         
-        # If we bundled a ZIP, extract it
         if os.path.exists(zip_path) and not os.path.exists(target_browser_dir):
             print("Extracting bundled browsers... (this may take a moment)")
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(bundle_dir) # Extracts to _MEIPASS/pw-browsers
-        
-        # Now point Playwright to it
+                zip_ref.extractall(bundle_dir) 
+                
+        # --- FIX: Restore Execute Permissions ---
         if os.path.exists(target_browser_dir):
             os.environ["PLAYWRIGHT_BROWSERS_PATH"] = target_browser_dir
             print(f"Playwright browsers configured at: {target_browser_dir}")
+            
+            # Walk through the folder and make binaries executable
+            # Ideally we only need to target the main binary, but let's be safe.
+            for root, dirs, files in os.walk(target_browser_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    # Simple heuristic: if it has no extension or is .app/Contents/MacOS/..., make it executable
+                    # Or just try to make everything executable that looks like a binary
+                    if "Google Chrome" in file or "chrome" in file.lower() or "node" in file.lower() or "ffmpeg" in file.lower():
+                         try:
+                            st = os.stat(file_path)
+                            os.chmod(file_path, st.st_mode | stat.S_IEXEC)
+                         except:
+                            pass
         else:
              print("Warning: bundled browsers not found.")
     else:
-        # Running normally (dev mode)
         pass
 except Exception as e:
     print(f"Error setting up environment: {e}")
@@ -47,7 +56,7 @@ SCOPES = [
 
 SHEET_NAME = "AgentData" 
 TARGET_URL = f"file://{os.path.abspath('form.html')}"
-DRIVE_FOLDER_ID = None 
+DRIVE_FOLDER_ID = "17gnQ3JcAodRCzzfqzELr2Y0GtMql8J3w" 
 
 def resource_path(relative_path):
     try:
@@ -126,7 +135,12 @@ def upload_to_drive(filename):
         if DRIVE_FOLDER_ID:
             file_metadata['parents'] = [DRIVE_FOLDER_ID]
         media = MediaFileUpload(filename, mimetype='image/png')
-        file = service.files().create(body=file_metadata, media_body=media, fields='id, webViewLink').execute()
+        file = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id, webViewLink',
+            supportsAllDrives=True
+        ).execute()
         print(f"File ID: {file.get('id')}")
         print(f"View it here: {file.get('webViewLink')}")
     except Exception as e:
@@ -138,9 +152,29 @@ def main():
     if data:
         screenshot = fill_form(data)
         if screenshot:
-            upload_to_drive(screenshot)
+            print("--- Step 3: Screenshot Ready ---")
+            print(f"File saved: {screenshot}")
+            # upload_to_drive(screenshot) # Disabled due to quota limits
+            
+            # Show success GUI message (works cleanly in windowed mode)
+            try:
+                import tkinter as tk
+                from tkinter import messagebox
+                root = tk.Tk()
+                root.withdraw()
+                root.lift()
+                root.attributes('-topmost', True)
+                messagebox.showinfo("Agent Complete", f"Success!\nForm filled and screenshot saved to: {screenshot}")
+                root.destroy()
+            except Exception:
+                pass
+
     print("\nDone. You can close this window.")
-    input("Press Enter to exit...")
+    try:
+        # Prompt only if safely running in a standard console (prevents crashes in windowed apps)
+        input("Press Enter to exit...")
+    except Exception:
+        pass
 
 if __name__ == "__main__":
     main()

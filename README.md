@@ -54,3 +54,17 @@ python main.py
 ```
 
 If successful, you will see a new row added to your Google Sheet!
+
+## Troubleshooting
+
+### "Windows protected your PC" (SmartScreen Warning)
+When you run the generated `.exe` for the first time on a Windows machine, you might see a blue box saying **"Windows protected your PC"**.
+
+This happens because the `.exe` was built by PyInstaller and is not digitally signed with an expensive developer certificate, so Windows treats it as an "unrecognized app".
+
+**How to bypass it:**
+1. Click on **"More info"** right below the message.
+2. A new button will appear at the bottom saying **"Run anyway"**.
+3. Click **"Run anyway"** and the agent will execute normally.
+
+*Note: You only have to do this once. Windows will remember that you allowed this application to run.*
