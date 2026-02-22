@@ -3,3 +3,4 @@ google-auth==2.27.0
 playwright>=1.41.0
 google-api-python-client==2.118.0
 pyinstaller==6.3.0
+customtkinter==5.2.2
